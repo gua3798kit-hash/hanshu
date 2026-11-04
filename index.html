@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<title>函数</title>
+<meta name="description" content="离线函数绘图：二维、三维曲面与立体">
+<meta name="application-name" content="函数">
+<meta name="apple-mobile-web-app-title" content="函数">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#F6F1E8">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="apple-touch-startup-image" href="icons/splash-1206x2622.png" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: light)">
+<link rel="apple-touch-startup-image" href="icons/splash-1206x2622-dark.png" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
+<link rel="stylesheet" href="vendor/katex/katex.min.css">
+<link rel="stylesheet" href="app.css">
+<script>var __h=document.documentElement.dataset.theme;window.__HOST_THEME__=__h==='dark'||__h==='light'?__h:null;try{var s=JSON.parse(localStorage.getItem('hanshu.state.v1')||'{}');var t=s.theme;if(!t||t==='auto')t=window.__HOST_THEME__||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.theme=t;if(s.dim)document.documentElement.dataset.dim=s.dim;}catch(e){document.documentElement.dataset.theme=window.__HOST_THEME__||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}</script>
+</head>
+<body>
+<div id="app">
+  <canvas id="c2d" class="plot" aria-label="二维函数图像"></canvas>
+  <canvas id="c3d" class="plot" aria-label="三维函数图像"></canvas>
+  <div id="labels3d" class="labels3d" aria-hidden="true"></div>
+  <div id="trace-label" class="trace-label" hidden></div>
+  <div id="pick-label" class="trace-label pick" hidden></div>
+  <div id="busy3d" class="busy" hidden><span></span>计算中</div>
+
+  <header class="topbar">
+    <div class="brand" aria-hidden="true"><svg viewBox="0 0 64 64" width="30" height="30"><path d="M8 40c6-2 9-20 18-20s10 22 19 22c5 0 8-6 11-10" fill="none" stroke="var(--accent)" stroke-width="6.5" stroke-linecap="round"/></svg></div>
+    <div class="seg" role="tablist">
+      <button role="tab" data-dim="2d">二维</button>
+      <button role="tab" data-dim="3d">三维</button>
+      <span class="seg-thumb"></span>
+    </div>
+    <button id="btn-settings" class="icon-btn" aria-label="设置">
+      <svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="16" cy="7" r="2.2" fill="none" stroke="currentColor" stroke-width="1.9"/><circle cx="10" cy="17" r="2.2" fill="none" stroke="currentColor" stroke-width="1.9"/></svg>
+    </button>
+  </header>
+
+  <div class="zoom-ctrl">
+    <button id="z-full" aria-label="全屏"><svg class="i-full" viewBox="0 0 24 24" width="20" height="20"><path d="M4.5 9V4.5H9M15 4.5h4.5V9M19.5 15v4.5H15M9 19.5H4.5V15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg><svg class="i-exit" viewBox="0 0 24 24" width="20" height="20"><path d="M9 4.5V9H4.5M19.5 9H15V4.5M15 19.5V15h4.5M4.5 15H9v4.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button id="z-in" aria-label="放大"><svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    <button id="z-out" aria-label="缩小"><svg viewBox="0 0 24 24" width="20" height="20"><path d="M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    <button id="z-home" aria-label="回到原点"><svg viewBox="0 0 24 24" width="20" height="20"><path d="M4.5 11 12 4.5 19.5 11M7 9.5V19h10V9.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </div>
+
+  <section id="sheet" class="sheet">
+    <div class="sheet-grab"><span></span></div>
+    <div class="sheet-head">
+      <span class="sheet-title">表达式</span>
+      <button class="sheet-add"><svg viewBox="0 0 24 24" width="17" height="17"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>添加</button>
+    </div>
+    <ul class="expr-list"></ul>
+  </section>
+
+  <section id="editor" class="editor" hidden>
+    <div class="ed-bar">
+      <span class="ed-dot"></span>
+      <div class="ed-scroll"><div class="ed-label"></div><div class="ed-math"></div></div>
+      <button class="ed-done">完成</button>
+    </div>
+    <div class="ed-status"></div>
+    <div class="kbd"></div>
+  </section>
+
+  <section id="settings" class="modal" hidden>
+    <div class="modal-card">
+      <div class="modal-head"><span>设置</span><button class="set-close" aria-label="关闭">完成</button></div>
+      <div class="set-body"></div>
+    </div>
+  </section>
+
+  <div id="toast" class="toast" hidden></div>
+</div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
